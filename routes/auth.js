@@ -2,6 +2,7 @@ const router = require("express").Router();
 const User = require("../models/User");
 const { registerValidation, loginValidation } = require("../validation");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 router.post("/request", async (req, res) => {
   // Validate the data
@@ -25,27 +26,28 @@ router.post("/request", async (req, res) => {
 
   try {
     await post.save(); // Save the entered post to the database
-    res.json({ user: post._id});
+    res.json({ user: post._id });
   } catch (error) {
     res.json({ message: error });
   }
 });
 
 // Login
-router.post("/login", async (req, res) =>{
-    // Validate the data
-    const { error } = loginValidation(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
+router.post("/login", async (req, res) => {
+  // Validate the data
+  const { error } = loginValidation(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
 
-     // Check if the email is already is in the database
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).send("Ivalid email");
+  // Check if the email is already is in the database
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) return res.status(400).send("Ivalid email");
 
-    const validPass = await bcrypt.compare(req.body.password, user.password)
-    if(!validPass) return res.status(400).send("Invalid password")
+  const validPass = await bcrypt.compare(req.body.password, user.password);
+  if (!validPass) return res.status(400).send("Invalid password");
 
-    return res.json("Loged in")
-
-})
+  // Create and assign a json web token (jwt)
+  const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET);
+  res.header("auth-token", token).send(token);
+});
 
 module.exports = router;
